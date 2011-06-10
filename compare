@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+
+INFILE = ARGV[0] or begin
+  puts "Must specify input file"
+  exit 1
+end
+
+SCRIPTS = [
+  'munge_ruby',
+  'munge_ruby_stringscanner',
+  'munge_ruby_getc',
+  'munge_ruby_excelsior',
+  'munge_ruby_ccsv',
+  'munge_go',
+  'munge_c'
+]
+
+VARIANTS = {
+  'single' => 'time {script} < {in} | pv > {out}',
+  'parallel' => 'time parallel --keep-order --pipe {script} < {in} | pv > {out}'
+}
+
+def run(cmd)
+  puts cmd
+  system cmd
+end
+
+def parse_template(template, script_path, in_path, out_path)
+  template.
+    gsub('{script}', script_path).
+    gsub('{in}', in_path).
+    gsub('{out}', out_path)
+end
+
+def compare_output_files(outfiles)
+  md5s = outfiles.map do |outfile|
+    md5 = `md5 -q #{outfile}`.chomp
+    puts "#{md5} - #{outfile}"
+    md5
+  end
+
+  if md5s.uniq.size == 1
+    puts "All the same!"
+  else
+    puts "ERROR: Some output files differ"
+  end
+end
+
+def setup_output_path(in_path, script, variant)
+  out_dir = File.join 'output', script, variant
+  out_path = File.join out_dir, File.basename(in_path)
+  `mkdir -p #{out_dir}`
+  out_path
+end
+
+def script_path(script)
+  File.join('scripts', script)
+end
+
+def run_benchmarks(scripts, variants, in_path)
+  out_paths = []
+  scripts.each do |script|
+    puts "Running benchmarks for script: #{script}"
+    variants.each do |variant, template|
+      out_paths << out_path = setup_output_path(in_path, script, variant)
+      puts "Running variant: #{variant}"
+      cmd = parse_template(template, script_path(script), in_path, out_path)
+      run cmd
+    end
+    puts "-" * 100
+  end
+  
+  puts "Comparing output files..."
+  compare_output_files(out_paths)
+end
+
+
+run_benchmarks(SCRIPTS, VARIANTS, INFILE)

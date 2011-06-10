@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+count = ARGV[0].to_i
+
+$stderr.puts "Generating #{count} line file..."
+
+count.times do |i|
+  puts 10.times.map { rand(100) }.join(',')
+end
