@@ -7,11 +7,9 @@ int main () {
   int i = 0;
   char str[50];
   char chr;
-  char delim = ',';
-  char eol = '\n';
 
   while ((chr = getchar()) != EOF ) {
-    if(chr == delim || chr == eol) {
+    if(chr == ',' || chr == '\n') {
       str[i] = '\0';
       i = 0;
       n = pow(atoi(str), 2);
