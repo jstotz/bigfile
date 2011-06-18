@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-
 buffer = ''
 
 while char = $stdin.getc

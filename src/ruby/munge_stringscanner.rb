@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-
 require 'strscan'
 
 SCANNER = StringScanner.new ''

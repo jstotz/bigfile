@@ -1,23 +1,21 @@
 #!/usr/bin/env ruby
 
+require 'digest/sha1'
+
 INFILE = ARGV[0] or begin
   puts "Must specify input file"
   exit 1
 end
 
 SCRIPTS = [
-  'munge_ruby',
-  'munge_ruby_stringscanner',
-  'munge_ruby_getc',
-  'munge_ruby_excelsior',
-  'munge_ruby_ccsv',
-  'munge_go',
-  'munge_c'
+  './bin/haskell/munge < {in}',
+  './bin/c/munge < {in}',
+  'ruby src/ruby/munge.rb < {in}'
 ]
 
 VARIANTS = {
-  'single' => 'time {script} < {in} | pv > {out}',
-  'parallel' => 'time parallel --keep-order --pipe {script} < {in} | pv > {out}'
+  'single' => 'time {script} | pv > {out}',
+  'parallel' => 'time parallel --keep-order --pipe {script} | pv > {out}'
 }
 
 def run(cmd)
@@ -46,15 +44,15 @@ def compare_output_files(outfiles)
   end
 end
 
+def script_id(script)
+  Digest::SHA1.hexdigest(script)
+end
+
 def setup_output_path(in_path, script, variant)
-  out_dir = File.join 'output', script, variant
+  out_dir = File.join 'output', script_id(script), variant
   out_path = File.join out_dir, File.basename(in_path)
   `mkdir -p #{out_dir}`
   out_path
-end
-
-def script_path(script)
-  File.join('scripts', script)
 end
 
 def run_benchmarks(scripts, variants, in_path)
@@ -64,7 +62,7 @@ def run_benchmarks(scripts, variants, in_path)
     variants.each do |variant, template|
       out_paths << out_path = setup_output_path(in_path, script, variant)
       puts "Running variant: #{variant}"
-      cmd = parse_template(template, script_path(script), in_path, out_path)
+      cmd = parse_template(template, script, in_path, out_path)
       run cmd
     end
     puts "-" * 100
@@ -73,6 +71,5 @@ def run_benchmarks(scripts, variants, in_path)
   puts "Comparing output files..."
   compare_output_files(out_paths)
 end
-
 
 run_benchmarks(SCRIPTS, VARIANTS, INFILE)
