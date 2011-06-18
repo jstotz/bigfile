@@ -18,16 +18,21 @@ VARIANTS = {
   'parallel' => 'time parallel --keep-order --pipe {script} | pv > {out}'
 }
 
+def expand_variants(variants, scripts)
+  scripts.map do |script|
+    variants.map do |name, template|
+      template.gsub '{script}', script
+    end
+  end.flatten
+end
+
 def run(cmd)
   puts cmd
   system cmd
 end
 
-def parse_template(template, script_path, in_path, out_path)
-  template.
-    gsub('{script}', script_path).
-    gsub('{in}', in_path).
-    gsub('{out}', out_path)
+def parse_template(template, in_file, out_file)
+  template.gsub('{in}', in_file).gsub('{out}', out_file)
 end
 
 def compare_output_files(outfiles)
@@ -48,28 +53,26 @@ def script_id(script)
   Digest::SHA1.hexdigest(script)
 end
 
-def setup_output_path(in_path, script, variant)
-  out_dir = File.join 'output', script_id(script), variant
-  out_path = File.join out_dir, File.basename(in_path)
+def setup_output_file(script, in_file)
+  out_dir = File.join 'output', script_id(script)
+  out_file = File.join out_dir, File.basename(in_file)
   `mkdir -p #{out_dir}`
-  out_path
+  File.open(File.join(out_dir, 'script.txt'), 'w') {|f| f.write script}
+  out_file
 end
 
-def run_benchmarks(scripts, variants, in_path)
-  out_paths = []
-  scripts.each do |script|
+def run_benchmarks(scripts, variants, in_file)
+  out_files = []
+  expand_variants(variants, scripts).each do |template|
+    out_files << out_file = setup_output_file(template, in_file)    
+    script = template.gsub('{in}', in_file).gsub('{out}', out_file)    
     puts "Running benchmarks for script: #{script}"
-    variants.each do |variant, template|
-      out_paths << out_path = setup_output_path(in_path, script, variant)
-      puts "Running variant: #{variant}"
-      cmd = parse_template(template, script, in_path, out_path)
-      run cmd
-    end
+    run script
     puts "-" * 100
   end
   
   puts "Comparing output files..."
-  compare_output_files(out_paths)
+  compare_output_files(out_files)
 end
 
 run_benchmarks(SCRIPTS, VARIANTS, INFILE)
